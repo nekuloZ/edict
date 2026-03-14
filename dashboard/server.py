@@ -654,6 +654,175 @@ def handle_review_action(task_id, action, comment=''):
     return {'ok': True, 'message': f'{task_id} {label}{dispatched}'}
 
 
+# ══ 合规审核：任务质量检测 ══
+
+def _analyze_task_clarity(title, params=None):
+    """分析任务清晰度，返回 (is_clear, missing_info, questions)"""
+    questions = []
+    missing = []
+    
+    # 1. 检查任务长度
+    if len(title) < 10:
+        missing.append('任务描述过短')
+        questions.append('请详细描述任务目标，具体要做什么？')
+    
+    # 2. 检查是否包含动词/动作
+    action_keywords = ['分析', '生成', '创建', '修改', '审查', '检查', '统计', '汇总', '设计', '实现', '优化', '处理', '整理', '撰写', '编写']
+    has_action = any(kw in title for kw in action_keywords)
+    if not has_action:
+        missing.append('缺少明确动作')
+        questions.append('请明确任务类型：需要分析、生成、修改还是其他操作？')
+    
+    # 3. 检查数据源
+    data_keywords = ['数据', '表格', '报表', '文档', '文件', '数据库', 'API', '飞书', '多维表格']
+    has_data_source = any(kw in title for kw in data_keywords)
+    params_data = params.get('data_source', '') if params else ''
+    if not has_data_source and not params_data:
+        missing.append('数据源不明确')
+        questions.append('请指定数据来源：从哪里获取数据？（如：飞书多维表格、数据库、文件等）')
+    
+    # 4. 检查输出格式
+    output_keywords = ['报告', '文档', '表格', '列表', '图表', 'Markdown', 'PDF', 'Excel']
+    has_output = any(kw in title for kw in output_keywords)
+    params_format = params.get('format', '') if params else ''
+    if not has_output and not params_format:
+        missing.append('输出格式不明确')
+        questions.append('请指定期望的输出格式：报告、表格、图表还是其他？')
+    
+    # 5. 检查时间范围（如果是分析类任务）
+    if '分析' in title or '统计' in title or '汇总' in title:
+        time_keywords = ['本周', '本月', '上周', '上月', '今天', '昨天', '近', '最近', '每日', '每月']
+        has_time = any(kw in title for kw in time_keywords)
+        params_time = params.get('date_range', '') if params else ''
+        if not has_time and not params_time:
+            missing.append('时间范围不明确')
+            questions.append('请指定分析的时间范围：本周、本月还是其他时间段？')
+    
+    # 6. 检查是否过于笼统
+    vague_patterns = ['看看', '检查一下', '帮我', '处理下', '弄一下', '搞一下']
+    is_vague = any(pat in title for pat in vague_patterns)
+    if is_vague:
+        missing.append('表述过于笼统')
+        questions.append('任务描述过于模糊，请具体说明要完成什么目标？')
+    
+    is_clear = len(missing) == 0
+    return is_clear, missing, questions
+
+
+def handle_compliance_audit(task_id):
+    """合规部审核任务清晰度，模糊则暂停追问"""
+    tasks = load_tasks()
+    task = next((t for t in tasks if t.get('id') == task_id), None)
+    if not task:
+        return {'ok': False, 'error': f'任务 {task_id} 不存在'}
+    
+    if task.get('state') != 'Xingbu':
+        return {'ok': False, 'error': f'任务 {task_id} 当前状态为 {task.get("state")}，不在合规审核阶段'}
+    
+    title = task.get('title', '')
+    params = task.get('templateParams', {})
+    
+    is_clear, missing, questions = _analyze_task_clarity(title, params)
+    
+    _ensure_scheduler(task)
+    _scheduler_snapshot(task, 'compliance-audit')
+    
+    if not is_clear:
+        # 任务模糊，暂停并追问
+        task['block'] = '任务信息不完整，等待补充'
+        task['now'] = f'⚠️ 合规审核暂停：{missing[0]}'
+        question_text = '\n'.join([f'{i+1}. {q}' for i, q in enumerate(questions)])
+        task['compliance_questions'] = questions
+        task.setdefault('flow_log', []).append({
+            'at': now_iso(),
+            'from': '合规部',
+            'to': '管理员',
+            'remark': f'📋 任务审核暂停，需要补充信息：\n{question_text}'
+        })
+        _scheduler_mark_progress(task, '合规审核暂停，等待补充')
+        task['updatedAt'] = now_iso()
+        save_tasks(tasks)
+        
+        return {
+            'ok': True,
+            'clear': False,
+            'message': f'任务 {task_id} 信息不完整，已暂停',
+            'missing': missing,
+            'questions': questions
+        }
+    else:
+        # 任务清晰，继续流转
+        task['block'] = '无'
+        task['now'] = '合规审核通过，转产品经理起草'
+        task.setdefault('flow_log', []).append({
+            'at': now_iso(),
+            'from': '合规部',
+            'to': '产品经理',
+            'remark': '✅ 合规审核通过：任务信息完整清晰'
+        })
+        _scheduler_mark_progress(task, '合规审核通过')
+        task['state'] = 'Zhongshu'
+        task['updatedAt'] = now_iso()
+        save_tasks(tasks)
+        
+        # 派发给产品经理
+        dispatch_for_state(task_id, task, 'Zhongshu')
+        
+        return {
+            'ok': True,
+            'clear': True,
+            'message': f'任务 {task_id} 合规审核通过，已转产品经理'
+        }
+
+
+def handle_compliance_answer(task_id, answers):
+    """用户补充任务信息后继续审核"""
+    tasks = load_tasks()
+    task = next((t for t in tasks if t.get('id') == task_id), None)
+    if not task:
+        return {'ok': False, 'error': f'任务 {task_id} 不存在'}
+    
+    if not task.get('compliance_questions'):
+        return {'ok': False, 'error': f'任务 {task_id} 没有待回答的问题'}
+    
+    # 将答案补充到任务信息
+    questions = task.get('compliance_questions', [])
+    if isinstance(answers, list) and len(answers) > 0:
+        # 追加答案到标题或参数
+        supplement_info = '；'.join(answers)
+        task['title'] = f"{task['title']}（补充：{supplement_info}）"
+        task.setdefault('flow_log', []).append({
+            'at': now_iso(),
+            'from': '管理员',
+            'to': '合规部',
+            'remark': f'📝 补充信息：{supplement_info}'
+        })
+    
+    # 清除暂停状态，直接通过审核
+    task['block'] = '无'
+    if 'compliance_questions' in task:
+        del task['compliance_questions']
+    task['now'] = '合规审核通过，转产品经理起草'
+    task['state'] = 'Zhongshu'
+    task.setdefault('flow_log', []).append({
+        'at': now_iso(),
+        'from': '合规部',
+        'to': '产品经理',
+        'remark': '✅ 合规审核通过：用户已补充任务信息'
+    })
+    task['updatedAt'] = now_iso()
+    save_tasks(tasks)
+    
+    # 派发给产品经理
+    dispatch_for_state(task_id, task, 'Zhongshu')
+    
+    return {
+        'ok': True,
+        'clear': True,
+        'message': f'任务 {task_id} 合规审核通过，已转产品经理'
+    }
+
+
 # ══ Agent 在线状态检测 ══
 
 _AGENT_DEPTS = [
@@ -867,10 +1036,11 @@ def wake_agent(agent_id, message=''):
 # 状态 → agent_id 映射
 _STATE_AGENT_MAP = {
     'Taizi': '秘书',
+    'Xingbu': '合规部',
     'Zhongshu': '产品经理',
     'Menxia': '质量审核',
     'Assigned': '项目经理',
-    'Doing': None,         # 六部，需从 org 推断
+    'Doing': None,         # 各部门，需从 org 推断
     'Review': '项目经理',
     'Next': None,          # 待执行，从 org 推断
     'Pending': '产品经理', # 待处理，默认产品经理
@@ -1875,7 +2045,8 @@ def get_task_activity(task_id):
 # 状态推进顺序（手动推进用）
 _STATE_FLOW = {
     'Pending':  ('Taizi', '管理员', '秘书', '待处理任务转交秘书分拣'),
-    'Taizi':    ('Zhongshu', '秘书', '产品经理', '秘书分拣完毕，转产品经理起草'),
+    'Taizi':    ('Xingbu', '秘书', '合规部', '秘书分拣完毕，转合规部审核'),
+    'Xingbu':   ('Zhongshu', '合规部', '产品经理', '合规审核通过，转产品经理起草'),
     'Zhongshu': ('Menxia', '产品经理', '质量审核', '产品方案提交质量审核'),
     'Menxia':   ('Assigned', '质量审核', '项目经理', '审核通过，转项目经理派发'),
     'Assigned': ('Doing', '项目经理', '各部门', '项目经理开始派发执行'),
@@ -1884,13 +2055,26 @@ _STATE_FLOW = {
     'Review':   ('Done', '项目经理', '秘书', '全流程完成，返回管理员'),
 }
 _STATE_LABELS = {
-    'Pending': '待处理', 'Taizi': '秘书', 'Zhongshu': '产品经理', 'Menxia': '质量审核',
+    'Pending': '待处理', 'Taizi': '秘书', 'Xingbu': '合规审核', 'Zhongshu': '产品经理', 'Menxia': '质量审核',
     'Assigned': '项目经理', 'Next': '待执行', 'Doing': '执行中', 'Review': '审查', 'Done': '完成',
 }
 
 
 def dispatch_for_state(task_id, task, new_state, trigger='state-transition'):
     """推进/审批后自动派发对应 Agent（后台异步，不阻塞响应）。"""
+    # 合规审核状态：先进行任务质量检测
+    if new_state == 'Xingbu':
+        # 异步调用合规审核
+        def do_compliance_audit():
+            import time
+            time.sleep(1)  # 短暂延迟，确保任务已保存
+            result = handle_compliance_audit(task_id)
+            if not result.get('clear', True):
+                log.info(f'📋 {task_id} 合规审核暂停：{result.get("missing", [])}')
+        threading.Thread(target=do_compliance_audit, daemon=True).start()
+        log.info(f'🚀 {task_id} 进入合规审核，正在检测任务清晰度...')
+        return
+    
     agent_id = _STATE_AGENT_MAP.get(new_state)
     if agent_id is None and new_state in ('Doing', 'Next'):
         # 优先使用 target_dept（任务指定的执行部门）
@@ -2433,6 +2617,25 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json({'ok': False, 'error': 'taskId and action(approve/reject) required'}, 400)
                 return
             result = handle_review_action(task_id, action, comment)
+            self.send_json(result)
+            return
+
+        if p == '/api/compliance-audit':
+            task_id = body.get('taskId', '').strip()
+            if not task_id:
+                self.send_json({'ok': False, 'error': 'taskId required'}, 400)
+                return
+            result = handle_compliance_audit(task_id)
+            self.send_json(result)
+            return
+
+        if p == '/api/compliance-answer':
+            task_id = body.get('taskId', '').strip()
+            answers = body.get('answers', [])
+            if not task_id:
+                self.send_json({'ok': False, 'error': 'taskId required'}, 400)
+                return
+            result = handle_compliance_answer(task_id, answers)
             self.send_json(result)
             return
 

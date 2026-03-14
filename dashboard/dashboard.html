@@ -916,14 +916,15 @@ function restoreGlobalScanState(){
 const PIPE = [
   {key:'Inbox',    dept:'用户',   icon:'👑', action:'下发'},
   {key:'Taizi',    dept:'秘书',   icon:'🤴', action:'分拣'},
+  {key:'Xingbu',   dept:'合规部', icon:'⚖️', action:'审核'},
   {key:'Zhongshu', dept:'产品经理', icon:'📜', action:'起草'},
   {key:'Menxia',   dept:'质量审核', icon:'🔍', action:'审议'},
   {key:'Assigned', dept:'项目经理', icon:'📮', action:'派发'},
-  {key:'Doing',    dept:'六部',   icon:'⚙️', action:'执行'},
+  {key:'Doing',    dept:'各部门',   icon:'⚙️', action:'执行'},
   {key:'Review',   dept:'项目经理', icon:'🔎', action:'汇总'},
   {key:'Done',     dept:'汇报',   icon:'✅', action:'完成'},
 ];
-const PIPE_STATE_IDX = {Inbox:0,Pending:0,Taizi:1,Zhongshu:2,Menxia:3,Assigned:4,Doing:5,Review:6,Done:7,Blocked:5,Cancelled:5,Next:4};
+const PIPE_STATE_IDX = {Inbox:0,Pending:0,Taizi:1,Xingbu:2,Zhongshu:3,Menxia:4,Assigned:5,Doing:6,Review:7,Done:8,Blocked:6,Cancelled:6,Next:5};
 
 /* ══ DEPT COLORS ══ */
 const DEPT_COLOR = {'秘书':'#e8a040','产品经理':'#a07aff','质量审核':'#6a9eff','项目经理':'#6aef9a','内容运营':'#f5c842','财务':'#ff9a6a','研发部':'#ff5270','合规部':'#cc4444','运维部':'#44aaff','人事':'#9b59b6','用户':'#ffd700','汇报':'#2ecc8a','直播运营':'#ff66aa','店铺运营':'#66ccff','选品':'#ffaa44','采购跟单':'#88dd66'};
@@ -934,7 +935,7 @@ const esc=s=>s?String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g
 async function fetchJ(u){const r=await fetch(u,{cache:'no-store'});if(!r.ok)throw Error(r.status);return r.json()}
 async function postJ(u,d){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});return r.json()}
 function toast(msg,type='ok',ms=3000){const el=document.createElement('div');el.className=`toast ${type}`;el.textContent=msg;document.getElementById('toaster').appendChild(el);setTimeout(()=>el.remove(),ms)}
-const STATE_LABEL={Inbox:'收件',Pending:'待处理',Taizi:'秘书分拣',Zhongshu:'中书起草',Menxia:'门下审议',Assigned:'已派发',Doing:'执行中',Review:'待审查',Done:'已完成',Blocked:'阻塞',Cancelled:'已取消',Next:'待执行'};
+const STATE_LABEL={Inbox:'收件',Pending:'待处理',Taizi:'秘书分拣',Xingbu:'合规审核',Zhongshu:'产品起草',Menxia:'质量审议',Assigned:'已派发',Doing:'执行中',Review:'待审查',Done:'已完成',Blocked:'阻塞',Cancelled:'已取消',Next:'待执行'};
 // 根据轮次动态生成状态标签
 function stateLabel(t){
   const r = t.review_round||0;

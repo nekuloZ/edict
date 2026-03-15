@@ -11,15 +11,19 @@ router = APIRouter()
 
 # Agent 元信息（对应 agents/ 目录下的 SOUL.md）
 AGENT_META = {
-    "zaochao": {"name": "早朝（朝会主持）", "role": "朝会召集与议程管理", "icon": "🏛️"},
-    "shangshu": {"name": "项目总监", "role": "任务派发与进度管理", "icon": "📜"},
+    "zaochao": {"name": "数据简报", "role": "数据采集与报表生成", "icon": "📈"},
+    "shangshu": {"name": "项目经理", "role": "任务派发与进度管理", "icon": "📊"},
     "zhongshu": {"name": "产品经理", "role": "需求分析与方案设计", "icon": "📋"},
     "menxia": {"name": "质量审核", "role": "审核与质量把关", "icon": "✅"},
-    "libu": {"name": "人力资源", "role": "人事与组织管理", "icon": "👥"},
+    "libu": {"name": "内容运营", "role": "内容策划与文案撰写", "icon": "📝"},
     "hubu": {"name": "财务", "role": "财务与资源管理", "icon": "💰"},
     "gongbu": {"name": "运维部", "role": "工程与技术实施", "icon": "🔧"},
     "xingbu": {"name": "合规部", "role": "规范与质量审查", "icon": "⚖️"},
-    "bingbu": {"name": "研发部", "role": "技术攻关与系统开发", "icon": "🛡️"},
+    "bingbu": {"name": "研发部", "role": "技术攻关与系统开发", "icon": "💻"},
+    "live_ops": {"name": "直播运营", "role": "直播间运营与主播管理", "icon": "🎬"},
+    "store_ops": {"name": "店铺运营", "role": "店铺日常运营与优化", "icon": "🏪"},
+    "sourcing": {"name": "选品", "role": "商品选品与市场分析", "icon": "🎯"},
+    "procurement": {"name": "采购跟单", "role": "采购执行与供应商管理", "icon": "📦"},
 }
 
 

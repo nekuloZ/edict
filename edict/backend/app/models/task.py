@@ -1,8 +1,8 @@
-"""Task 模型 — 三省六部任务核心表。
+"""Task 模型 — 任务核心表。
 
 对应当前 tasks_source.json 中的每一条任务记录。
-state 对应三省六部流转状态机：
-  Taizi → Zhongshu → Menxia → Assigned → Doing → Review → Done
+state 对应任务流转状态机：
+  秘书 → 产品经理 → 质量审核 → 派发 → 执行 → 审查 → 完成
 """
 
 import enum
@@ -26,13 +26,13 @@ from ..db import Base
 
 
 class TaskState(str, enum.Enum):
-    """任务状态枚举 — 映射三省六部流程。"""
-    Taizi = "Taizi"           # 前台分拣
+    """任务状态枚举 — 映射任务流程。"""
+    Taizi = "Taizi"           # 秘书分拣
     Zhongshu = "Zhongshu"     # 产品经理起草
     Menxia = "Menxia"         # 质量审核审议
-    Assigned = "Assigned"     # 项目经理已将任务派发
+    Assigned = "Assigned"     # 项目经理已派发
     Next = "Next"             # 待执行
-    Doing = "Doing"           # 六部执行中
+    Doing = "Doing"           # 执行中
     Review = "Review"         # 审查汇总
     Done = "Done"             # 完成
     Blocked = "Blocked"       # 阻塞
@@ -76,7 +76,7 @@ ORG_AGENT_MAP = {
 
 
 class Task(Base):
-    """三省六部任务表。"""
+    """任务表。"""
     __tablename__ = "tasks"
 
     id = Column(String(32), primary_key=True, comment="任务ID, e.g. JJC-20260301-001")

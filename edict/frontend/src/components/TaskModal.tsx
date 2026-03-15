@@ -11,23 +11,28 @@ import type {
 } from '../api';
 
 const AGENT_LABELS: Record<string, string> = {
-  main: '太子',
-  zhongshu: '中书省',
-  menxia: '门下省',
-  shangshu: '尚书省',
-  libu: '礼部',
-  hubu: '户部',
-  bingbu: '兵部',
-  xingbu: '刑部',
-  gongbu: '工部',
-  libu_hr: '吏部',
-  zaochao: '钦天监',
+  main: '秘书',
+  taizi: '秘书',
+  zhongshu: '产品经理',
+  menxia: '质量审核',
+  shangshu: '项目经理',
+  libu: '内容运营',
+  hubu: '财务',
+  bingbu: '研发部',
+  xingbu: '合规部',
+  gongbu: '运维部',
+  libu_hr: '人事',
+  zaochao: '数据简报',
+  live_ops: '直播运营',
+  store_ops: '店铺运营',
+  sourcing: '选品',
+  procurement: '采购跟单',
 };
 
 const NEXT_LABELS: Record<string, string> = {
-  Taizi: '中书省起草',
-  Zhongshu: '门下省审议',
-  Menxia: '尚书省派发',
+  Taizi: '产品经理起草',
+  Zhongshu: '质量审核审议',
+  Menxia: '项目经理派发',
   Assigned: '开始执行',
   Doing: '进入审查',
   Review: '完成',
@@ -142,7 +147,7 @@ export default function TaskModal() {
   };
 
   const doReview = async (action: string) => {
-    const labels: Record<string, string> = { approve: '准奏', reject: '封驳' };
+    const labels: Record<string, string> = { approve: '通过', reject: '驳回' };
     const comment = prompt(`${labels[action]} ${task.id}\n\n请输入批注（可留空）：`);
     if (comment === null) return;
     try {
@@ -277,8 +282,8 @@ export default function TaskModal() {
             )}
             {['Review', 'Menxia'].includes(task.state) && (
               <>
-                <button className="btn-action" style={{ background: '#2ecc8a22', color: '#2ecc8a', border: '1px solid #2ecc8a44' }} onClick={() => doReview('approve')}>✅ 准奏</button>
-                <button className="btn-action" style={{ background: '#ff527022', color: '#ff5270', border: '1px solid #ff527044' }} onClick={() => doReview('reject')}>🚫 封驳</button>
+                <button className="btn-action" style={{ background: '#2ecc8a22', color: '#2ecc8a', border: '1px solid #2ecc8a44' }} onClick={() => doReview('approve')}>✅ 通过</button>
+                <button className="btn-action" style={{ background: '#ff527022', color: '#ff5270', border: '1px solid #ff527044' }} onClick={() => doReview('reject')}>🚫 驳回</button>
               </>
             )}
             {['Pending', 'Taizi', 'Zhongshu', 'Menxia', 'Assigned', 'Doing', 'Review', 'Next'].includes(task.state) && (
@@ -289,7 +294,7 @@ export default function TaskModal() {
           {/* Scheduler Section */}
           <div className="sched-section">
             <div className="sched-head">
-              <span className="sched-title">🧭 太子调度</span>
+              <span className="sched-title">🧭 秘书调度</span>
               <span className="sched-status">
                 {sched ? `${sched.enabled === false ? '已禁用' : '运行中'} · 阈值 ${sched.stallThresholdSec || 180}s` : '加载中...'}
               </span>
@@ -297,7 +302,7 @@ export default function TaskModal() {
             <div className="sched-grid">
               <div className="sched-kpi"><div className="k">停滞时长</div><div className="v">{fmtStalled(stalledSec)}</div></div>
               <div className="sched-kpi"><div className="k">重试次数</div><div className="v">{sched?.retryCount || 0}</div></div>
-              <div className="sched-kpi"><div className="k">升级级别</div><div className="v">{!sched?.escalationLevel ? '无' : sched.escalationLevel === 1 ? '门下省' : '尚书省'}</div></div>
+              <div className="sched-kpi"><div className="k">升级级别</div><div className="v">{!sched?.escalationLevel ? '无' : sched.escalationLevel === 1 ? '质量审核' : '项目经理'}</div></div>
               <div className="sched-kpi"><div className="k">派发状态</div><div className="v">{sched?.lastDispatchStatus || 'idle'}</div></div>
             </div>
             {sched && (
@@ -464,9 +469,10 @@ function LiveActivitySection({
   const phaseDurations = data.phaseDurations || [];
   const maxDur = Math.max(...phaseDurations.map((p) => p.durationSec || 1), 1);
   const phaseColors: Record<string, string> = {
-    '皇上': '#eab308', '太子': '#f97316', '中书省': '#3b82f6', '门下省': '#8b5cf6',
-    '尚书省': '#10b981', '六部': '#06b6d4', '礼部': '#ec4899', '户部': '#f59e0b',
-    '兵部': '#ef4444', '刑部': '#6366f1', '工部': '#14b8a6', '吏部': '#d946ef',
+    '老板': '#eab308', '秘书': '#f97316', '产品经理': '#3b82f6', '质量审核': '#8b5cf6',
+    '项目经理': '#10b981', '执行部门': '#06b6d4', '内容运营': '#ec4899', '财务': '#f59e0b',
+    '研发部': '#ef4444', '合规部': '#6366f1', '运维部': '#14b8a6', '人事': '#d946ef',
+    '直播运营': '#ec4899', '店铺运营': '#f59e0b', '选品': '#10b981', '采购跟单': '#6366f1',
   };
 
   // Todos summary

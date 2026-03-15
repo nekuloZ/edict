@@ -40,7 +40,7 @@ _JUNK_TITLES = {
 }
 
 STATE_ORG_MAP = {
-    'Taizi': '前台/客服', 'Zhongshu': '产品经理', 'Menxia': '质量审核', 'Assigned': '项目经理',
+    'Taizi': '秘书', 'Zhongshu': '产品经理', 'Menxia': '质量审核', 'Assigned': '项目经理',
     'Doing': '执行中', 'Review': '项目经理', 'Done': '完成', 'Blocked': '阻塞',
 }
 
